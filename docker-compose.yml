@@ -1,0 +1,53 @@
+# The three containers behind Recipe Box. Ports are chosen not to clash with a
+# locally installed Postgres or other course apps.
+#
+#   make docker-up   starts postgres + mailhog and BUILDS the backend image
+#   the Playwright fixture starts / stops the backend container per suite
+#   make dev         starts the backend on the dev profile for manual exploration
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: recipebox-postgres
+    environment:
+      POSTGRES_USER: recipebox
+      POSTGRES_PASSWORD: recipebox
+      POSTGRES_DB: recipebox_dev
+    ports:
+      - "5435:5432"
+    volumes:
+      # creates the recipebox_e2e and recipebox_it databases on first start
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+      - recipebox-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recipebox -d recipebox_dev"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: recipebox-mailhog
+    ports:
+      - "1027:1025" # SMTP - the backend sends here
+      - "8027:8025" # HTTP - the inbox UI and the API the tests poll ( http://localhost:8027 )
+
+  backend:
+    build: ./backend
+    image: recipebox-backend
+    container_name: recipebox-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-e2e}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+    ports:
+      - "8086:8086"
+
+volumes:
+  recipebox-pgdata:
