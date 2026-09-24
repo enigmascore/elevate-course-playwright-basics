@@ -11,7 +11,7 @@ name: recipebox
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: recipebox-postgres
+    container_name: playwright-basics-postgres
     environment:
       POSTGRES_USER: recipebox
       POSTGRES_PASSWORD: recipebox
@@ -21,7 +21,7 @@ services:
     volumes:
       # creates the recipebox_e2e and recipebox_it databases on first start
       - ./docker/postgres-init:/docker-entrypoint-initdb.d
-      - recipebox-pgdata:/var/lib/postgresql/data
+      - playwright-basics-pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U recipebox -d recipebox_dev"]
       interval: 2s
@@ -30,15 +30,15 @@ services:
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
-    container_name: recipebox-mailhog
+    container_name: playwright-basics-mailhog
     ports:
       - "1027:1025" # SMTP - the backend sends here
       - "8027:8025" # HTTP - the inbox UI and the API the tests poll ( http://localhost:8027 )
 
   backend:
     build: ./backend
-    image: recipebox-backend
-    container_name: recipebox-backend
+    image: playwright-basics-backend
+    container_name: playwright-basics-backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,4 +54,4 @@ services:
       - "8086:8086"
 
 volumes:
-  recipebox-pgdata:
+  playwright-basics-pgdata:
